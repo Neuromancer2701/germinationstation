@@ -17,13 +17,13 @@
 
 
 //Input 
-#define AIR   0            //Thermistor of Air temp
-#define EARTH 1           //Thermistor of Soil temp
-#define FIRE  2           //Photocell
-#define WATER 3           //Resistor network for water 
+#define WIND_IN   0            //Thermistor of Air temp
+#define EARTH_IN  1           //Thermistor of Soil temp
+#define FIRE_IN   2           //Photocell
+#define WATER_IN  3           //Resistor network for water 
 
 //Output
-#define AIR_OUT    7      //hair dryer
+#define WIND_OUT   7      //hair dryer
 #define EARTH_OUT  6      //Heating PAd
 #define FAN_OUT    5      //Fan
 #define FIRE_OUT   4      //Lights
@@ -31,18 +31,17 @@
 
 
 
-typedef enum Elements {earth, wind, fire, water};
-//Elements four_elements;
+enum Elements {Earth, Wind, Fire, Water};
 
 int volts = 0;
 
 
 // AIR variables
-#define set_pt_air 82
-int air        = 0;
-int a_temp     = 0;
-int air_timer  = 0;
-int air_period = 0;
+#define set_pt_wind 82
+int wind        = 0;
+int w_temp     = 0;
+int wind_timer  = 0;
+int wind_period = 0;
 
 // Earth variables
 #define set_pt_earth 82
@@ -83,29 +82,30 @@ void setup()
 {
 
   Serial.begin(BAUD);                         // use the serial port to send the values back to the computer
-  pinMode(AIR_OUT, OUTPUT);  
-  digitalWrite(AIR_OUT, LOW);
+  pinMode(WIND_OUT, OUTPUT);  
+  digitalWrite(WIND_OUT, LOW);
   
   FrequencyTimer2::setPeriod(2030);           // 1ms  
   FrequencyTimer2::setOnOverflow(counting);
   
-  //Elements four_elements;
-  four_elements = wind;
 }
 
 void loop() 
 {
-	/*air = analogRead(AIR);    				// read the value from the sensor Air Thermistor
-	a_temp = calTemp(air,set_pt_air);
-
-	earth = analogRead(EARTH);    			// read the value from the sensor Soil Thermistor
-	a_temp = calTemp(earth,set_pt_earth);
-
-	fire = analogRead(FIRE);    			// read the value from the sensor PhotoCell
-	water = analogRead(WATER);    			// read the value from the sensor Mositure sensor
+	wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor
+	w_temp = calTemp(wind,set_pt_wind);
+        PID(
 
 
 
+	earth = analogRead(EARTH_IN);    			// read the value from the sensor Soil Thermistor
+	e_temp = calTemp(earth,set_pt_earth);
+
+	fire = analogRead(FIRE_IN);    			        // read the value from the sensor PhotoCell
+	water = analogRead(WATER_IN);    			// read the value from the sensor Mositure sensor
+
+
+/*
 	if(air_period == (count100ms/1000) )
 	{
 	  digitalWrite(AIR_OUT, HIGH);
@@ -184,7 +184,7 @@ int calTemp(int bits, int setpoint)
 }
 
 
-void PID(int setpt, int tempnow, Elements elem)
+void PID(int setpt, int tempnow, char elem)
 {
   duty[elem] = 0;
   
