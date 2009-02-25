@@ -93,16 +93,23 @@ void setup()
   
   FrequencyTimer2::setPeriod(2030);           // 1ms  
   FrequencyTimer2::setOnOverflow(counting);
+  DateTime.sync(1235600649);
   
 }
 
 void loop() 
 {
   
-        while( !getPCtime());                                   // Wait until program is synced
+        //while( !getPCtime());        // Wait until program is synced
+
+        delay(3000);
+          
+        
+        Serial.print("Status: ");
+        Serial.println(DateTime.status);
   
         Serial.print("Clock synced at: ");
-        Serial.println(DateTime.now(),DEC);
+        Serial.println(DateTime.now());
   
   
 	wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor
@@ -144,22 +151,22 @@ boolean getPCtime()
   // if time sync available from serial port, update time and return true
   while(Serial.available() >=  TIME_MSG_LEN )
   {  // time message consists of a header and ten ascii digits
-    if( Serial.read() == TIME_HEADER ) 
-    {        
+        
       time_t pctime = 0;
       for(int i=0; i < TIME_MSG_LEN -1; i++)
       {   
-        char c= Serial.read();          
+        char c= Serial.read();
+        Serial.println(c);        
         if( c >= '0' && c <= '9')
-        {   
+        {  
           pctime = (10 * pctime) + (c - '0') ; // convert digits to a number    
         }
       }   
       DateTime.sync(pctime);   // Sync Arduino clock to the time received on the serial port
       return true;   // return true if time message received on the serial port
-    }  
+ 
   }
-  return false;  //if no message return false
+  //return false;  //if no message return false
 }
  
                   
