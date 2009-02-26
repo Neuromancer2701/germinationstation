@@ -93,27 +93,23 @@ void setup()
   
   FrequencyTimer2::setPeriod(2030);           // 1ms  
   FrequencyTimer2::setOnOverflow(counting);
-  DateTime.sync(1235600649);
+  
+  while( !getPCtime());                                   // Wait until program is synced 
+  
+  //long l_time = 1234567890;
+  //DateTime.sync(l_time);
+        
+
   
 }
 
 void loop() 
 {
-  
-        //while( !getPCtime());        // Wait until program is synced
-
-        delay(3000);
-          
-        
-        Serial.print("Status: ");
-        Serial.println(DateTime.status);
-  
-        Serial.print("Clock synced at: ");
-        Serial.println(DateTime.now());
+    Serial.print("Clock synced at: ");
+    Serial.println(DateTime.now());
   
   
-	wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor
-	w_temp = calTemp(wind,set_pt_wind);
+        wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor        Serial.println(wind);	w_temp = calTemp(wind,set_pt_wind);
         PID(set_pt_wind, w_temp, Wind);
         delay(5);
 
@@ -131,7 +127,8 @@ void loop()
         set_fire(fire);
 
 
-
+        Serial.println(count1ms/1000);
+        
 	if((count1ms % 1000) == 0)				//Debug/variable feed
 	{
 	Serial.print("Seconds: ");
@@ -148,26 +145,15 @@ void loop()
 
 boolean getPCtime() 
 {
-  // if time sync available from serial port, update time and return true
-  while(Serial.available() >=  TIME_MSG_LEN )
-  {  // time message consists of a header and ten ascii digits
-        
-      time_t pctime = 0;
-      for(int i=0; i < TIME_MSG_LEN -1; i++)
-      {   
-        char c= Serial.read();
-        Serial.println(c);        
-        if( c >= '0' && c <= '9')
-        {  
-          pctime = (10 * pctime) + (c - '0') ; // convert digits to a number    
-        }
-      }   
-      DateTime.sync(pctime);   // Sync Arduino clock to the time received on the serial port
-      return true;   // return true if time message received on the serial port
+   char c;
+   char pctime[TIME_MSG_LEN];
  
-  }
-  //return false;  //if no message return false
-}
+  // if time sync available from serial port, update time and return true
+  Serial.println("before the read\n");      // time message consists of a header and ten ascii digits  for(int i = 0; i++; i < TIME_MSG_LEN)  {        c = Serial.read();                     if( c >= '0' && c <= '9')
+        {   
+          pctime[i] = c; 
+        }
+           }         Serial.println(pctime);      DateTime.sync(long(pctime));   // Sync Arduino clock to the time received on the serial port            if( DateTime.status == dtStatusSync) return true;   // return true if time message received on the serial port      else return false;  //if no message return false}
  
                   
 int calTemp(int bits, int setpoint)
@@ -207,22 +193,47 @@ void PID(int setpt, int tempnow, char elem)
   error_past[elem] = error[elem];
   error[elem] = setpt - tempnow;
 
-  if(error[elem] < 0) error[elem] = 0;
+  if(error[elem] < 0) 
+  {
+    if(elem == Wind)
+    {}
+    else
+    {
+      error[elem] = 0;
+    }
+  }
 
   duty[elem] = P[elem]*error[elem] + (I[elem]*(error[elem] + error_past[elem])/2) +(D[elem]*(error[elem]-error_past[elem])/2);
-  if(duty[elem] < 100) duty[elem] = 100;
+  if(duty[elem] >  100) duty[elem] =  100;
+  if(duty[elem] < -100) duty[elem] = -100;
 }
 
 void set_timers()
 {
+  int wind_temp = 100;
+  
 	if(wind_period == (count1ms/WIND_DIVISOR) )
 	{
-	  digitalWrite(WIND_OUT, HIGH);
-	  wind_timer  = duty[Wind]   + (count1ms/WIND_DIVISOR);
+          if(duty[Wind] < 0)
+          {
+            wind_temp =+ duty[Wind];
+            digitalWrite(FAN_OUT, HIGH);
+          }
+          else
+          {
+           wind_temp = duty[Wind];
+	   digitalWrite(WIND_OUT, HIGH);
+          }
+          
+	  wind_timer  = wind_temp   + (count1ms/WIND_DIVISOR);
 	  wind_period = PERIOD + (count1ms/WIND_DIVISOR);
 	}
 
-	if(wind_timer == (count1ms/WIND_DIVISOR))	digitalWrite(WIND_OUT, LOW);
+	if(wind_timer == (count1ms/WIND_DIVISOR))	
+        {
+         digitalWrite(WIND_OUT, LOW);
+         digitalWrite(FAN_OUT, LOW);
+        }
 	
 	
 	if(earth_period == (count1ms/EARTH_DIVISOR))
