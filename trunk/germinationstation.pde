@@ -26,8 +26,8 @@
 //Output
 #define WIND_OUT   	7      //hair dryer
 #define EARTH_OUT  	6      //Heating Pad
-#define FAN_OUT    	5      //Fan
-#define FIRE_OUT   	4      //Lights
+#define FIRE_OUT    	5      //Fan
+#define FAN_OUT   	4      //Lights
 #define WATER_OUT  	3      // Pump/TBD???
 
 
@@ -90,14 +90,19 @@ void setup()
   Serial.begin(BAUD);                         // use the serial port to send the values back to the computer
   pinMode(WIND_OUT, OUTPUT);  
   digitalWrite(WIND_OUT, LOW);
+  pinMode(EARTH_OUT, OUTPUT);  
+  digitalWrite(EARTH_OUT, LOW);
+  pinMode(FIRE_OUT, OUTPUT);  
+  digitalWrite(FIRE_OUT, LOW);  
+
   
   FrequencyTimer2::setPeriod(2030);           // 1ms  
   FrequencyTimer2::setOnOverflow(counting);
   
   while( !getPCtime());                                   // Wait until program is synced 
   
-  //long l_time = 1234567890;
-  //DateTime.sync(l_time);
+  long l_time = 1235948670;
+  DateTime.sync(l_time);
         
 
   
@@ -105,11 +110,12 @@ void setup()
 
 void loop() 
 {
-    Serial.print("Clock synced at: ");
-    Serial.println(DateTime.now());
+    //Serial.print("Clock synced at: ");
+    //Serial.println(DateTime.now());
   
   
-        wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor        Serial.println(wind);	w_temp = calTemp(wind,set_pt_wind);
+        wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor        
+        w_temp = calTemp(wind,set_pt_wind);
         PID(set_pt_wind, w_temp, Wind);
         delay(5);
 
@@ -127,17 +133,18 @@ void loop()
         set_fire(fire);
 
 
-        Serial.println(count1ms/1000);
+        //Serial.println(count1ms/1000);
         
-	if((count1ms % 1000) == 0)				//Debug/variable feed
+	if((count1ms % 100) == 0)				//Debug/variable feed
 	{
-	Serial.print("Seconds: ");
-	Serial.println(count1ms/1000);
-	Serial.print("Period: ");
-	Serial.println(wind_period);
-	Serial.print("Duty: ");
-	Serial.println(wind_timer);
+	Serial.print("Wind: ");
 	Serial.println(w_temp);
+	Serial.print("Earth: ");
+	Serial.println(e_temp);
+	Serial.print("Fire: ");
+	Serial.println(fire);
+        Serial.print("Hour: ");
+	Serial.println(int(DateTime.Hour));
 	}
 
 }
@@ -145,16 +152,26 @@ void loop()
 
 boolean getPCtime() 
 {
+   
    char c;
    char pctime[TIME_MSG_LEN];
  
   // if time sync available from serial port, update time and return true
-  Serial.println("before the read\n");      // time message consists of a header and ten ascii digits  for(int i = 0; i++; i < TIME_MSG_LEN)  {        c = Serial.read();                     if( c >= '0' && c <= '9')
+  //Serial.println("before the read\n");      // time message consists of a header and ten ascii digits  
+  for(int i = 0; i++; i < TIME_MSG_LEN)  
+  {        c = Serial.read();                     if( c >= '0' && c <= '9')
         {   
           pctime[i] = c; 
         }
-           }         Serial.println(pctime);      DateTime.sync(long(pctime));   // Sync Arduino clock to the time received on the serial port            if( DateTime.status == dtStatusSync) return true;   // return true if time message received on the serial port      else return false;  //if no message return false}
- 
+  }         
+           
+    Serial.println(pctime);      
+           
+    DateTime.sync(long(pctime));   // Sync Arduino clock to the time received on the serial port            
+           
+    if( DateTime.status == dtStatusSync) return true;   // return true if time message received on the serial port      
+    else return false;  //if no message return false}
+ }
                   
 int calTemp(int bits, int setpoint)
 {
@@ -206,6 +223,8 @@ void PID(int setpt, int tempnow, char elem)
   duty[elem] = P[elem]*error[elem] + (I[elem]*(error[elem] + error_past[elem])/2) +(D[elem]*(error[elem]-error_past[elem])/2);
   if(duty[elem] >  100) duty[elem] =  100;
   if(duty[elem] < -100) duty[elem] = -100;
+  
+  
 }
 
 void set_timers()
@@ -248,7 +267,7 @@ void set_timers()
 void set_fire(int light)  
 {
 
-  if( (DateTime.Hour >= SUN_RISE && DateTime.Hour <= SUN_SET) && light < SUN)
+  if(/* (DateTime.Hour >= SUN_RISE && DateTime.Hour <= SUN_SET) &&*/ light < SUN)
   {
     digitalWrite(FIRE_OUT, HIGH);
   }
