@@ -4,13 +4,22 @@
 #include <avr/io.h> 
 #include <math.h> 
 #include <FrequencyTimer2.h>
+#include "string.h"
+
+char incomingByte[17] = {""};	// for incoming serial data
+char dataflag = 0;
+
+char synctime[] = "ST";
+char setP[] =     "SP";
+char setI[] =     "SI";
+char setD[] =     "SD";
 
 #define coldco 		-0.711
 #define medco 		-0.432
 #define hotco 		-0.368
 #define Vc  		0.0049      // 5V/1024bits
 #define PERIOD 		100			// All periods will be 100 ticks  Timing with be determined by the Element period
-#define BAUD		9600
+#define BAUD		38400
 #define CLOCK      	2030		// 1ms timer does not match the function description
 
 #define TIME_MSG_LEN	11   	// time sync to PC is HEADER followed by unix time_t as ten ascii digits
@@ -56,8 +65,8 @@ int earth_period = 0;			//Earth period = 10sec  = 100 Ticks  100ms/tick
 
 // Fire variables
 #define SUN 		650		   	//Threshold when the sun comes out, lights go off and vice versa
-#define SUN_RISE        6     // 6:00am
-#define SUN_SET        20    // 8:00pm
+#define SUN_RISE        11    // 6:00am EST
+#define SUN_SET         1    // 8:00pm
 int fire = 0;                  	// variable to store the value coming from the sensor
 
 // Water variables
@@ -68,12 +77,12 @@ int water = 0;                  // variable to store the value coming from the s
 
 
 //PID Arrays
-int error[4] ={0,0,0,0};
-int error_past[4] = {0,0,0,0};
-int duty[4] = {0,0,0,0};
-int P[4] = {4,4,4,4};                    //Proportional Constant
-int I[4] = {4,4,4,4};                    //Integral Constant
-int D[4] = {4,4,4,4};                    //Derivative Constant
+float error[4] ={0,0,0,0};
+float error_past[4] = {0,0,0,0};
+float duty[4] = {0,0,0,0};
+float P[4] = {4,4,4,4};                    //Proportional Constant
+float I[4] = {4,4,4,4};                    //Integral Constant
+float D[4] = {4,4,4,4};                    //Derivative Constant
 
 
 
@@ -99,10 +108,17 @@ void setup()
   FrequencyTimer2::setPeriod(2030);           // 1ms  
   FrequencyTimer2::setOnOverflow(counting);
   
-  while( !getPCtime());                                   // Wait until program is synced 
+  while( DateTime.status != dtStatusSync)  // Wait until program is synced 
+  {
+    readSerialString(incomingByte);
+    if(dataflag)
+    {
+      parsedata(incomingByte);
+      dataflag = 0;
+    }
+  }
   
-  long l_time = 1235948670;
-  DateTime.sync(l_time);
+  
         
 
   
@@ -110,8 +126,7 @@ void setup()
 
 void loop() 
 {
-    //Serial.print("Clock synced at: ");
-    //Serial.println(DateTime.now());
+
   
   
         wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor        
@@ -133,10 +148,13 @@ void loop()
         set_fire(fire);
 
 
-        //Serial.println(count1ms/1000);
+        
         
 	if((count1ms % 100) == 0)				//Debug/variable feed
 	{
+
+  
+  /*
 	Serial.print("Wind: ");
 	Serial.println(w_temp);
 	Serial.print("Earth: ");
@@ -145,34 +163,11 @@ void loop()
 	Serial.println(fire);
         Serial.print("Hour: ");
 	Serial.println(int(DateTime.Hour));
+*/
 	}
 
 }
 
-
-boolean getPCtime() 
-{
-   
-   char c;
-   char pctime[TIME_MSG_LEN];
- 
-  // if time sync available from serial port, update time and return true
-  //Serial.println("before the read\n");      // time message consists of a header and ten ascii digits  
-  for(int i = 0; i++; i < TIME_MSG_LEN)  
-  {        c = Serial.read();                     if( c >= '0' && c <= '9')
-        {   
-          pctime[i] = c; 
-        }
-  }         
-           
-    Serial.println(pctime);      
-           
-    DateTime.sync(long(pctime));   // Sync Arduino clock to the time received on the serial port            
-           
-    if( DateTime.status == dtStatusSync) return true;   // return true if time message received on the serial port      
-    else return false;  //if no message return false}
- }
-                  
 int calTemp(int bits, int setpoint)
 {
   int temp = 0;
@@ -267,7 +262,7 @@ void set_timers()
 void set_fire(int light)  
 {
 
-  if(/* (DateTime.Hour >= SUN_RISE && DateTime.Hour <= SUN_SET) &&*/ light < SUN)
+  if((DateTime.Hour >= SUN_RISE && DateTime.Hour <= SUN_SET) && light < SUN)
   {
     digitalWrite(FIRE_OUT, HIGH);
   }
@@ -277,4 +272,97 @@ void set_fire(int light)
   }
   
 }
+void readSerialString (char *strArray) 
+{
+  int i = 0;
+  int data = 0;
+  if(Serial.available()) {    
+    //Serial.print("reading Serial String: ");  //optional: for confirmation
+    data = Serial.read();
+    if(data == 'G')
+    {
+      //Serial.println("Got the G!!! ");
+      delay(5);
+      while (Serial.available()){            
+      strArray[i] = Serial.read();
+      delay(5);
+       //Serial.print(strArray[(i-1)]);         //optional: for confirmation
+      if(i == 16 || (strArray[i]=='\n')) break;
+      i++;
+    }
+       //Serial.println();  
+       dataflag = 1;
+    }
+  }      
+}
 
+void parsedata(char *datastr)
+{
+    char cmd[3]={'QQQ'};
+    char data[15]= {""};
+    time_t pctime = 0;
+    float temp = 0.00;
+    
+    
+    strncpy( cmd, datastr, 2 );
+    
+    
+    if(!int(strncmp(synctime,cmd,2)))
+    {
+      //Serial.println("Got the cmd!!! ");
+      for(int z = 0; z <= 14; z++)
+     {
+      if(datastr[z+2] =='\n') break;
+      
+      if( datastr[z+2] >= '0' && datastr[z+2] <= '9')
+      {
+          pctime = (10 * pctime) + (datastr[z+2] - '0');
+      }
+      
+      
+     } 
+     
+      Serial.println(pctime);
+      DateTime.sync(pctime);
+      /*
+      DateTime.available();
+      Serial.println(DateTime.now(),DEC);
+      Serial.println(DateTime.Hour,DEC);
+      Serial.println(DateTime.Minute,DEC);
+      Serial.println(DateTime.Second,DEC);
+      */
+    } 
+    else if (!strcmp(setP,cmd))
+    {
+      Serial.println(P[Earth]);
+     
+      for(int q = 0; q <= 2; q++)
+      {
+        data[q] = datastr[q+3];        
+      }
+      Serial.println(temp);
+      temp = float(int(data)/100);
+      switch(int(datastr[2]))
+      {
+        case Earth:
+            P[Earth] = temp;
+            Serial.println(P[Earth]*100);
+            break;
+        case Wind:
+            P[Wind] = temp;
+            break;
+        case Water:
+            P[Water] = temp;
+            break;    
+        case Fire:
+            P[Fire] = temp;
+            break;
+      }
+    }
+    else if (!strcmp(setI,cmd))
+    {}
+    else if (!strcmp(setD,cmd))
+    {}
+    else{}
+  
+}
