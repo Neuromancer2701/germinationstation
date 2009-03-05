@@ -1,6 +1,6 @@
 #include "string.h"
 
-char incomingByte[17] = {"1234567890"};	// for incoming serial data
+char incomingByte[17] = {""};	// for incoming serial data
 char dataflag = 0;
 
 char synctime[] = "ST";
@@ -10,7 +10,7 @@ char setD[] =     "SD";
 
 
 void setup() {
-	Serial.begin(9600);	// opens serial port, sets data rate to 9600 bps
+	Serial.begin(19200);	// opens serial port, sets data rate to 9600 bps
 }
 
 void loop() {
@@ -34,13 +34,15 @@ void readSerialString (char *strArray)
     data = Serial.read();
     if(data == 'G')
     {
-      Serial.println("Got the G!!! ");
+      //Serial.println("Got the G!!! ");
+      delay(5);
       while (Serial.available()){            
       strArray[i] = Serial.read();
-      i++;
+      delay(5);
        //Serial.print(strArray[(i-1)]);         //optional: for confirmation
-       if(i == 14) break;
-      }
+      if(i == 16 || (strArray[i]=='\n')) break;
+      i++;
+    }
        //Serial.println();  
        dataflag = 1;
     }
@@ -50,21 +52,22 @@ void readSerialString (char *strArray)
 void parsedata(char *datastr)
 {
     char cmd[3]={'QQQ'};
-    char data[11];
+    char data[15];
     int cmdflag;
-    strncpy( cmd, datastr, 2 );
-
-    Serial.print("Command: ");
-    Serial.println(cmd);
-    Serial.println(synctime);
-    cmdflag = int(strncmp(synctime,cmd,2));
-    Serial.println(cmdflag);
-    Serial.println(!cmdflag);
     
-    if(!cmdflag)
+    //Serial.println(datastr);
+    strncpy( cmd, datastr, 2 );
+    
+    //cmdflag = int(strncmp(synctime,cmd,2));
+    
+    if(!int(strncmp(synctime,cmd,2)))
     {
-      Serial.println("Got the cmd!!! ");
-      strncpy( cmd, datastr, 2 );
+      //Serial.println("Got the cmd!!! ");
+      for(int z = 0; z <= 14; z++)
+     {
+      data[z] = datastr[z+2];
+      if(data[z] =='\n') break;
+     } 
 
       Serial.println(data);
     } 
