@@ -6,6 +6,8 @@
 #include <FrequencyTimer2.h>
 #include "string.h"
 
+
+char Fan_on = 0;
 char incomingByte[17] = {""};	// for incoming serial data
 char dataflag = 0;
 
@@ -13,6 +15,11 @@ char synctime[] = "ST";
 char setP[] =     "SP";
 char setI[] =     "SI";
 char setD[] =     "SD";
+
+char getwater[] =     "GA";        //Agua
+char getearth[] =     "GE";
+char getwind[]  =     "GW";
+char getfire[]  =     "GF";
 
 #define coldco 		-0.711
 #define medco 		-0.432
@@ -64,9 +71,9 @@ int earth_period = 0;			//Earth period = 10sec  = 100 Ticks  100ms/tick
 
 
 // Fire variables
-#define SUN 		650		   	//Threshold when the sun comes out, lights go off and vice versa
-#define SUN_RISE        11    // 6:00am EST
-#define SUN_SET         1    // 8:00pm
+#define SUN 		750		   	//Threshold when the sun comes out, lights go off and vice versa
+#define SUN_RISE        6    // 6:00am EST
+#define SUN_SET         20    // 8:00pm
 int fire = 0;                  	// variable to store the value coming from the sensor
 
 // Water variables
@@ -103,7 +110,8 @@ void setup()
   digitalWrite(EARTH_OUT, LOW);
   pinMode(FIRE_OUT, OUTPUT);  
   digitalWrite(FIRE_OUT, LOW);  
-
+  pinMode(FAN_OUT, OUTPUT);  
+  digitalWrite(FAN_OUT, LOW);
   
   FrequencyTimer2::setPeriod(2030);           // 1ms  
   FrequencyTimer2::setOnOverflow(counting);
@@ -111,14 +119,15 @@ void setup()
   while( DateTime.status != dtStatusSync)  // Wait until program is synced 
   {
     readSerialString(incomingByte);
+    Serial.println("Waiting for Sync");
     if(dataflag)
     {
       parsedata(incomingByte);
       dataflag = 0;
     }
   }
-  
-  
+  wind_period  = 5;
+  earth_period = 50;
         
 
   
@@ -154,16 +163,26 @@ void loop()
 	{
 
   
-  /*
+        DateTime.available();
 	Serial.print("Wind: ");
 	Serial.println(w_temp);
-	Serial.print("Earth: ");
+	Serial.print("Wind period: ");
+	Serial.println(wind_period);
+	Serial.print("Wind Timer: ");
+	Serial.println(wind_timer);
+	Serial.print("Wind duty: ");
+	Serial.println(duty[Wind]);
+	Serial.print("Wind Time: ");
+	Serial.println(count1ms/WIND_DIVISOR);
+	Serial.print("Fan On: ");
+        //digitalWrite(FAN_OUT, HIGH);
+	Serial.println(int(Fan_on));
+        Serial.print("Earth Temp: ");
 	Serial.println(e_temp);
-	Serial.print("Fire: ");
-	Serial.println(fire);
         Serial.print("Hour: ");
+        DateTime.available();
 	Serial.println(int(DateTime.Hour));
-*/
+
 	}
 
 }
@@ -230,13 +249,19 @@ void set_timers()
 	{
           if(duty[Wind] < 0)
           {
-            wind_temp =+ duty[Wind];
+            Fan_on = 1;
+            wind_temp = -1* duty[Wind];
             digitalWrite(FAN_OUT, HIGH);
+            delay(1000);
+            Serial.print("Temp Var:");
+            Serial.println(wind_temp);
           }
           else
           {
+           Fan_on = 0;
            wind_temp = duty[Wind];
 	   digitalWrite(WIND_OUT, HIGH);
+           digitalWrite(FAN_OUT, LOW);
           }
           
 	  wind_timer  = wind_temp   + (count1ms/WIND_DIVISOR);
@@ -261,9 +286,18 @@ void set_timers()
 }
 void set_fire(int light)  
 {
-
-  if((DateTime.Hour >= SUN_RISE && DateTime.Hour <= SUN_SET) && light < SUN)
+      int TZmod = 0;  //time zone modifier
+      
+      DateTime.available();
+      if(DateTime.Hour <= 5)
+      {
+        TZmod = 24 - (5 - DateTime.Hour);
+      }
+      //Serial.print("TZ mod: ");
+      //Serial.println(TZmod);
+  if((TZmod >= SUN_RISE && TZmod < SUN_SET) && light < SUN)
   {
+    //Serial.println("Burning!!!");
     digitalWrite(FIRE_OUT, HIGH);
   }
   else
@@ -324,24 +358,25 @@ void parsedata(char *datastr)
      
       Serial.println(pctime);
       DateTime.sync(pctime);
-      /*
+      
       DateTime.available();
       Serial.println(DateTime.now(),DEC);
       Serial.println(DateTime.Hour,DEC);
       Serial.println(DateTime.Minute,DEC);
       Serial.println(DateTime.Second,DEC);
-      */
+      
     } 
     else if (!strcmp(setP,cmd))
     {
-      Serial.println(P[Earth]);
+      //Serial.println(P[Earth]);
      
       for(int q = 0; q <= 2; q++)
       {
         data[q] = datastr[q+3];        
       }
+      Serial.println(data);
+      temp = float(int(data))/100;
       Serial.println(temp);
-      temp = float(int(data)/100);
       switch(int(datastr[2]))
       {
         case Earth:
@@ -363,6 +398,26 @@ void parsedata(char *datastr)
     {}
     else if (!strcmp(setD,cmd))
     {}
+    else if (!strcmp(getwater,cmd))
+    {
+      //Serial.print(getwater);
+      //Serial.println();
+    }
+    else if (!strcmp(getearth,cmd))
+    {
+      Serial.print(getearth);
+      Serial.println(e_temp);
+    }
+    else if (!strcmp(getfire,cmd))
+    {
+      Serial.print(getfire);
+      Serial.println(fire);
+    }
+    else if (!strcmp(getwind,cmd))
+    {      
+      Serial.print(getwind);
+      Serial.println(w_temp);
+    }
     else{}
   
 }
