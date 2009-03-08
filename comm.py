@@ -8,16 +8,16 @@ SetP     = 'SP'
 earth    = 1
 wind     = 2
 
-ser = serial.Serial(14, 38400)
+#ser = serial.Serial(3, 38400)
 seconds = int(time.time())
 timestr = start + SyncTime + str(seconds) +'\n'
 print "Unix Time:"
 print timestr 
 #print time.ctime(seconds)
-
-print start + SetP + str(earth) + "312" + '\n'
 '''
-ser.write(start + SetP + str(earth) + "312" + '\n')
+print start + SetP + str(earth) + "312" + '\n'
+
+ser.write(timestr)
 print "Before: "
 print(ser.readline())
 print "After: "
