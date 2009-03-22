@@ -51,10 +51,6 @@ void loop() {
       Serial.println(data_string);*/
   if(count1ms % 1000 == 0)
   {
-
-    
-    
-    
       ltoa(time_stamp,data_string,10);
       itoa(earth_temp,earth_str,10);
       padzero(data_string,(4 - strlen(earth_str)));
