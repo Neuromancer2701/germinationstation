@@ -22,6 +22,7 @@ char getwater[] =     "GA";        //Agua
 char getearth[] =     "GE";
 char getwind[]  =     "GW";
 char getfire[]  =     "GF";
+char getdata[]  =     "GD";
 
 #define coldco 		-0.711
 #define medco 		-0.432
@@ -60,16 +61,16 @@ int volts = 0;
 #define WIND_DIVISOR 	1000
 int wind        = 0;
 int w_temp     = 0;
-int wind_timer  = 0;
-int wind_period = 0;			//Wind period = 100sec  = 100 Ticks  1000ms/tick
+unsigned long wind_timer  = 0;
+unsigned long wind_period = 0;			//Wind period = 100sec  = 100 Ticks  1000ms/tick
 
 // Earth variables
-#define set_pt_earth 	80
+#define set_pt_earth 	75
 #define EARTH_DIVISOR 	100       //Determines number of 1ms in a tick  there will always be 100 ticks in a period     
 int earth = 0;                  // variable to store the value coming from the sensor
 int e_temp = 0;
-int earth_timer  = 0;			// duty cycle + counter
-int earth_period = 0;			//Earth period = 10sec  = 100 Ticks  100ms/tick
+unsigned long earth_timer  = 0;			// duty cycle + counter
+unsigned long earth_period = 0;			//Earth period = 10sec  = 100 Ticks  100ms/tick
 
 
 // Fire variables
@@ -78,7 +79,7 @@ int earth_period = 0;			//Earth period = 10sec  = 100 Ticks  100ms/tick
 #define SUN_SET         20          // 8:00pm
 #define FIRE_DIVISOR  6000          // ~1 minute    
 int fire     = 0;                  	// variable to store the value coming from the sensor
-int firetimer = 0;
+unsigned long firetimer = 0;
 
 
 // Water variables
@@ -143,6 +144,12 @@ void loop()
 {
 long data_now = 10;
 
+        readSerialString(incomingByte);
+        if(dataflag)
+        {
+          parsedata(incomingByte);
+          dataflag = 0;
+        }
   
   
         wind = analogRead(WIND_IN);    				// read the value from the sensor Air Thermistor        
@@ -162,14 +169,14 @@ long data_now = 10;
         
         set_timers();
         set_fire(fire);
-
+/*
 	if(data_now == (count1ms % 100))				//Debug/variable feed
 	{
           data_now == (count1ms % 100) + 4;
           senddata();
                 
 	}
-
+*/
 }
 
 int calTemp(int bits, int setpoint)
@@ -327,7 +334,11 @@ void readSerialString (char *strArray)
 
 void senddata()
 {
-  char data_string[30] ={};
+  char data_string[80] ={};
+  char earth_timer_str[11] ={};
+  char earth_period_str[11] ={};
+  char wind_timer_str[11] ={};
+  char wind_period_str[11] ={};
   char earth_str[6]   ={};
   char wind_str[6]    ={};
   char water_str[6]   ={};
@@ -366,7 +377,23 @@ void senddata()
       
       padzero(data_string,(2 - strlen(hour)));
       strcat(data_string,hour);      
-
+      
+      ltoa(earth_timer,earth_timer_str,10);
+      padzero(data_string,(10 - strlen(earth_timer_str)));
+      strcat(data_string,earth_timer_str); 
+      
+      ltoa(earth_period,earth_period_str,10);
+      padzero(data_string,(10 - strlen(earth_period_str)));
+      strcat(data_string,earth_period_str); 
+      
+      ltoa(wind_timer,wind_timer_str,10);
+      padzero(data_string,(10 - strlen(wind_timer_str)));
+      strcat(data_string,wind_timer_str);
+      
+      ltoa(wind_period,wind_period_str,10);
+      padzero(data_string,(10 - strlen(wind_period_str)));
+      strcat(data_string,wind_period_str); 
+      
       char end[2] = {"\n"};
       strcat(data_string,end);            
       Serial.println(data_string);
@@ -403,7 +430,6 @@ void parsedata(char *datastr)
           pctime = (10 * pctime) + (datastr[z+2] - '0');
       }
       
-      
      } 
      
       Serial.println(pctime);
@@ -416,58 +442,9 @@ void parsedata(char *datastr)
       Serial.println(DateTime.Second,DEC);
       */
     } 
-    else if (!strcmp(setP,cmd))
+    else if(!strcmp(getdata,cmd))
     {
-      //Serial.println(P[Earth]);
-     
-      for(int q = 0; q <= 2; q++)
-      {
-        data[q] = datastr[q+3];        
-      }
-      Serial.println(data);
-      temp = float(int(data))/100;
-      Serial.println(temp);
-      switch(int(datastr[2]))
-      {
-        case Earth:
-            P[Earth] = temp;
-            Serial.println(P[Earth]*100);
-            break;
-        case Wind:
-            P[Wind] = temp;
-            break;
-        case Water:
-            P[Water] = temp;
-            break;    
-        case Fire:
-            P[Fire] = temp;
-            break;
-      }
+     senddata();
     }
-    else if (!strcmp(setI,cmd))
-    {}
-    else if (!strcmp(setD,cmd))
-    {}
-    else if (!strcmp(getwater,cmd))
-    {
-      //Serial.print(getwater);
-      //Serial.println();
-    }
-    else if (!strcmp(getearth,cmd))
-    {
-      Serial.print(getearth);
-      Serial.println(e_temp);
-    }
-    else if (!strcmp(getfire,cmd))
-    {
-      Serial.print(getfire);
-      Serial.println(fire);
-    }
-    else if (!strcmp(getwind,cmd))
-    {      
-      Serial.print(getwind);
-      Serial.println(w_temp);
-    }
-    else{}
   
 }
