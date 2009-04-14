@@ -236,6 +236,7 @@ void PID(int setpt, int tempnow, char elem)
 void set_timers()
 {
   int wind_temp = 100;
+  unsigned long earth_tmp = 0;
   
 	if(wind_period == (count1ms/WIND_DIVISOR) )
 	{
@@ -260,23 +261,25 @@ void set_timers()
 	  wind_timer  = wind_temp   + (count1ms/WIND_DIVISOR);
 	  wind_period = PERIOD + (count1ms/WIND_DIVISOR);
 	}
-	//Serial.println((count1ms/WIND_DIVISOR));
-        //Serial.println(wind_timer);
+
 	if(wind_timer == (count1ms/WIND_DIVISOR))	
         {
          digitalWrite(WIND_OUT, LOW);
          digitalWrite(FAN_OUT, LOW);
         }
 	
-	//Serial.println((count1ms/EARTH_DIVISOR));
 	if(earth_period == (count1ms/EARTH_DIVISOR))
 	{
 	  digitalWrite(EARTH_OUT, HIGH);
 	  earth_timer  = duty[Earth]   + (count1ms/EARTH_DIVISOR);
 	  earth_period = PERIOD + (count1ms/EARTH_DIVISOR);
+          earth_tmp = (count1ms/EARTH_DIVISOR);
 	}
 
-	if(earth_timer == (count1ms/EARTH_DIVISOR))	digitalWrite(EARTH_OUT, LOW);
+	if((earth_timer == (count1ms/EARTH_DIVISOR)) || ((earth_timer == earth_tmp)))
+         {
+           digitalWrite(EARTH_OUT, LOW);
+         }
 }
 void set_fire(int light)  
 {
@@ -345,67 +348,60 @@ void senddata()
   char fire_str[6]    ={};
   char duty_temp[3]   ={};
   char hour[2]        ={};
-  
+  char comma[2] = {","};
+  char end[2] = {"\n"};
       DateTime.available();
       ltoa(DateTime.now(),data_string,10);
       
       itoa(DateTime.Hour,hour,10);
       
       itoa(e_temp,earth_str,10);
-      padzero(data_string,(4 - strlen(earth_str)));
+      strcat(data_string,comma);
       strcat(data_string,earth_str);
       
       itoa(w_temp,wind_str,10);
-      padzero(data_string,(4 - strlen(wind_str)));
+      strcat(data_string,comma);
       strcat(data_string,wind_str);
       
       itoa(water,water_str,10);
-      padzero(data_string,(4 - strlen(water_str)));
+      strcat(data_string,comma);
       strcat(data_string,water_str);
 
       itoa(fire,fire_str,10);
-      padzero(data_string,(4 - strlen(fire_str)));
+      strcat(data_string,comma);
       strcat(data_string,fire_str);      
       
       itoa(int(duty[Earth]),duty_temp,10);
-      padzero(data_string,(3 - strlen(duty_temp)));
+      strcat(data_string,comma);
       strcat(data_string,duty_temp);      
        
       itoa(int(duty[Wind]),duty_temp,10);
-      padzero(data_string,(3 - strlen(duty_temp)));
+      strcat(data_string,comma);
       strcat(data_string,duty_temp);
       
-      padzero(data_string,(2 - strlen(hour)));
+      strcat(data_string,comma);
       strcat(data_string,hour);      
       
       ltoa(earth_timer,earth_timer_str,10);
-      padzero(data_string,(10 - strlen(earth_timer_str)));
+      strcat(data_string,comma);
       strcat(data_string,earth_timer_str); 
       
       ltoa(earth_period,earth_period_str,10);
-      padzero(data_string,(10 - strlen(earth_period_str)));
+      strcat(data_string,comma);
       strcat(data_string,earth_period_str); 
       
       ltoa(wind_timer,wind_timer_str,10);
-      padzero(data_string,(10 - strlen(wind_timer_str)));
+      strcat(data_string,comma);
       strcat(data_string,wind_timer_str);
       
       ltoa(wind_period,wind_period_str,10);
-      padzero(data_string,(10 - strlen(wind_period_str)));
+      strcat(data_string,comma);
       strcat(data_string,wind_period_str); 
       
-      char end[2] = {"\n"};
       strcat(data_string,end);            
       Serial.println(data_string);
 }
 
-void padzero(char* str, int zeros)
-{
-    for(int q = 0; q < zeros; q++)
-    {
-         strcat(str,"0");
-    }  
-}
 
 void parsedata(char *datastr)
 {

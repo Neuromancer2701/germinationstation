@@ -42,7 +42,7 @@ class dataset:
         self.wind_period   = datastream[64:74]
         
     def printdata(self):
-        if len(self.ardtime) > 0 :
+        if str.isalnum(self.ardtime):
             print "The time is:" + self.ardtime
             print "Earth Temp:" + self.e_temp
             print "Wind Temp:" + self.w_temp
@@ -117,10 +117,9 @@ print rec_time
 '''
 
 while True:
-    print start+getdata
     ser.write(start+getdata)
     text = ser.readline()
     print text
     arduinodata.parse_data(text)
     arduinodata.printdata()
-    sleep(2)
+    sleep(3)
