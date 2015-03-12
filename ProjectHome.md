@@ -1,0 +1,1 @@
+Control loops for 4 sensor control(2 temp, water and light) for germination and growth of seeds/plants
